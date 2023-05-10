@@ -1,0 +1,408 @@
+---
+title: "Final Project"
+authors: "Rakesh Reddy Sadu , Bhargav Naidu Bandi , Maanya Thadiparthi"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Load required libraries
+# Here we load all the libraries needed for our Shiny app to function properly
+# Required libraries for building Shiny web apps
+library(shiny)
+library(shinydashboard)
+# Required libraries for data wrangling and visualization
+library(tidyverse) # Provides tools for data manipulation and visualization
+library(scales) # Provides scales for mapping data to visual properties (colors, sizes)
+library(corrr) # Provides tools for exploring correlations in data
+library(tidyr) # Provides tools for reshaping and tidying data
+library(ggplot2) # Provides tools for creating high-quality plots and charts
+library(stringr) # Provides tools for manipulating text strings
+library(kableExtra) # Provides tools for creating styled tables
+library(plotly) # Provides tools for creating interactive plots and charts
+# Required libraries for time series analysis and forecasting
+library(forecast) # Provides tools for time series forecasting and modeling
+```
+
+
+```{r}
+# Define UI for the app
+# This is where we define the user interface (UI) of our Shiny app using the dashboardPage function
+ui <- dashboardPage(
+  dashboardHeader(title = "Car Price Prediction"), # Title for the dashboard
+  dashboardSidebar(
+    sidebarMenu(
+      # Here we define the sidebar menu items for the different tabs in our app
+      menuItem("Metadata", tabName = "metadata"), # First tab
+      menuItem("Data", tabName = "data"), # Second tab
+      menuItem("Plots", tabName = "plots"), # Third tab
+      menuItem("Linear Model", tabName = "model"), # Fourth tab
+      menuItem("Accuracy", tabName = "accuracy"), # Fifth tab
+      menuItem("Discussion", tabName = "discussion"), # Sixth tab
+      menuItem("About", tabName = "about") # Seventh tab
+    )
+  ),
+  dashboardBody(
+    tabItems(
+      # Here we define the content for each tab
+      tabItem(
+        tabName = "metadata", # First tab
+        h4("Dataset information:"), # Heading for the tab
+        verbatimTextOutput("metadata") # Display the dataset information
+      ),
+      tabItem(
+        tabName = "data", # Second tab
+        h4("First 30 rows of the dataset:"), # Heading for the tab
+        tableOutput("data") # Display the first 20 rows of the dataset
+      ),
+      tabItem(
+        tabName = "plots", # Third tab
+        sidebarLayout(
+          sidebarPanel(
+            h3("Plots"), # Heading for the sidebar
+            selectInput(
+              "selected_variable", # Input for selecting a variable
+              "Select a variable:", # Label for the input
+              choices = c(
+                "enginesize",
+                "boreratio",
+                "stroke",
+                "compressionratio",
+                "horsepower",
+                "carlength",
+                "carwidth",
+                "carheight",
+                "curbweight",
+                "wheelbase",
+                "citympg",
+                "highwaympg"
+              ),
+              selected = NULL
+            )
+          ),
+          mainPanel(
+            plotlyOutput("scatterPlot"), # Display a scatter plot of the selected variable against price
+            plotOutput("boxPlot"), # Display a boxplot of the selected variable
+            plotOutput("histogram") # Display a histogram of the selected variable
+          )
+        )
+      ),
+      tabItem(
+        tabName = "model", # Fourth tab
+        h4("Linear Regression Model Summary:"), # Heading for the tab
+        verbatimTextOutput("model_summary") # Display the summary of the linear regression model
+      ),
+      tabItem(
+        tabName = "accuracy", # Fifth tab
+        h4("Accuracy measures on the validation partition:"), # Heading for the tab
+        verbatimTextOutput("accuracy") # Display the accuracy measures of the model on the validation partition
+      ),
+      
+tabItem(
+  tabName = "discussion", # Sixth tab
+  fluidRow(
+    column(
+      12,
+      h4("Discussion of the developed model:"), # Heading for the tab
+      # Remove shiny::tags$details code block
+      shiny::verbatimTextOutput("discussion")
+    )
+  )
+),
+
+
+      tabItem(
+        tabName = "about", # Seventh tab
+        fluidRow(
+          column(
+            12,
+            shiny::tags$h4("Car Price Prediction Shiny App"), # Heading for the tab
+            shiny::tags$p(
+              "This app uses a linear regression model to predict car prices based on the selected variable."
+            ),
+            shiny::tags$p(
+              "The dataset used in this app contains information on various car features such as engine size, horsepower, and fuel efficiency."
+            ),
+            shiny::tags$p(
+              "The app allows users to explore the data, visualize the relationship between the selected variable and car prices, and estimate car prices based on the selected variable."
+            ),
+            shiny::tags$p(
+              "This app was created by Bhargav Naidu Bandi, Rakesh Reddy S, Maanya Tadiparthi for our Capstone Project."
+            ),
+            shiny::tags$p(
+              "For more information or to view the source code, please visit the app's GitHub repository:"
+            )
+          ),
+          column(
+            12,
+            shiny::tags$a(
+              "https://github.com/your-repository", # Add a link to the GitHub repository
+              "View on GitHub",
+              target = "_blank"
+            )
+          ),
+          column(
+            12,
+            shiny::tags$a(
+              "https://your-shiny-app-url", # Add a link to the deployed app
+              "View the Shiny App",
+              target = "_blank"
+            )
+          )
+        )
+      )
+    )
+  )
+)
+```
+
+This is the UI code for a Shiny app. Here's a brief overview of what it does:
+
+The dashboard-page function is used to create a Shiny dashboard with multiple tabs. Each tab is defined using the tab Item function, and the sidebar menu items for each tab are defined using the menu Item function.
+
+The first tab (tabName = "metadata") displays information about the dataset used in the app, and the second tab (tabName = "data") displays the first 30 rows of the dataset.
+
+The third tab (tabName = "plots") allows the user to select a variable from a dropdown menu and displays a scatter plot, boxplot, and histogram of that variable against the car prices.
+
+The fourth tab (tabName = "model") displays the summary of the linear regression model that was developed using the selected variable.
+
+The fifth tab (tabName = "accuracy") displays the accuracy measures of the model on the validation partition.
+
+The sixth tab (tabName = "discussion") provides a brief discussion of the developed model and its potential uses.
+
+The seventh tab (tabName = "about") provides information about the app, including a link to the GitHub repository and a link to view the deployed app.
+
+
+```{r}
+# Define server logic
+server <- function(input, output) {
+  
+  # Read the dataset
+  cars <- read.csv("C:/Users/RAKESH REDDY/Desktop/Capstone/CarPrice.csv")
+  
+  # Metadata
+  output$metadata <- renderPrint({
+    str(cars)
+  })
+  
+  # Data
+  output$data <- renderTable({
+    head(cars, 30)
+  })
+  
+  # Scatter plot
+  output$scatterPlot <- renderPlotly({
+    req(input$selected_variable)
+    
+    target_variable <- "price" # Replace this with your constant target variable name
+    
+    plot_ly(cars, x = ~get(input$selected_variable), y = ~get(target_variable), type = "scatter", mode = "markers") %>%
+      layout(title = paste0(input$selected_variable, " vs. ", target_variable),
+             xaxis = list(title = input$selected_variable),
+             yaxis = list(title = target_variable))
+  })
+  
+  # Box plot
+  output$boxPlot <- renderPlot({
+    req(input$selected_variable)
+    
+    ggplot(cars, aes(x = "", y = get(input$selected_variable))) +
+      geom_boxplot() +
+      labs(title = paste0("Boxplot of ", input$selected_variable),
+           x = "",
+           y = input$selected_variable)
+  })
+  
+  # Histogram
+  output$histogram <- renderPlot({
+    req(input$selected_variable)
+    
+    ggplot(cars, aes(x = get(input$selected_variable))) +
+      geom_histogram(binwidth = 5) +
+      labs(title = paste0("Histogram of ", input$selected_variable),
+           x = input$selected_variable,
+           y = "Count")
+  })
+  
+  # Linear model
+  #output$model_summary <- renderPrint({
+  #  req(input$selected_variable)
+  #  linear_model <- lm(price ~ get(input$selected_variable), data = cars)
+  #  summary(linear_model)
+    
+  #})
+  
+# Linear model
+output$model_summary <- renderPrint({
+  req(input$selected_variable)
+  linear_model <- lm(price ~ get(input$selected_variable), data = cars)
+  
+cat("In the given code, a simple linear regression model with a single selected variable is used to predict car prices.\n",
+
+    "This choice of model is likely due to the goal of creating a simple and user-friendly app that can be used by non-experts\n",
+    "in the field of data science.\n",
+
+    "Using a simple linear regression model can be beneficial in terms of interpretability, as it allows the user to easily understand\n",
+    "the relationship between the selected variable and the car price.\n",
+
+    "Additionally, it can be easier to build and train a simple model, which may be particularly useful for small datasets or situations\n",
+    "where computational resources are limited.\n",
+
+    "However, it is important to note that a simple linear regression model may not always be the best choice for predicting car prices,\n",
+    "particularly if the relationship between the selected variable and the car price is complex or nonlinear.\n",
+
+    "In such cases, more complex models such as polynomial regression, decision trees, or neural networks may be more appropriate.\n",
+
+    "The choice of model should ultimately depend on the specific requirements and characteristics of the problem at hand.\n",
+
+    "Selected variable: ", input$selected_variable, "\n\n")
+
+  
+  # Print the model summary
+  summary(linear_model)
+})
+
+
+  
+  #Accuracy measures on the validation partition
+  output$accuracy <- renderPrint({
+    req(input$selected_variable)
+    set.seed(2023)
+    total.rows <- dim(cars)[1]
+    train.rows <- sample(1:total.rows, total.rows * 0.7)
+    valid.rows <- setdiff(1:total.rows, train.rows)
+    train.df <- cars[train.rows, ]
+    valid.df <- cars[-train.rows, ]
+    linear_model <- lm(price ~ get(input$selected_variable), data = train.df)
+    pred <- predict(linear_model, newdata = valid.df)
+    
+    accuracy(pred, valid.df$price)
+  })
+  
+  
+  
+  # Discussion of the developed model
+ output$discussion <- renderPrint({
+  
+# Introduction to the model and its potential uses
+# Introduction to the model and its potential uses
+cat("In this study, we investigated a dataset on car prices and their related features.\n",
+    "The following model is developed based on a linear regression with a single selected variable.\n",
+    "The model can be used in estimating car prices when provided with a similar dataset of cars\n",
+    "which are for sale, or not for sale. Car owners with no intention for sale can also benefit\n",
+    "from the model by seeing the predicted value of their car. People looking to buy a car can\n",
+    "determine if a seller is asking below or above the market price as predicted by the model.\n\n")
+
+# Interpretation of the linear regression model
+cat("Interpretation of the linear regression model: In addition to displaying the summary of the linear\n",
+    "regression model, you could also provide a brief interpretation of the coefficients and their significance.\n",
+    "For example, you could discuss which variables have a significant positive or negative effect on car\n",
+    "prices and by how much.\n\n")
+
+# Limitations of the model
+cat("Limitations of the model: It's important to acknowledge the limitations of any model, and the linear\n",
+    "regression model developed in this app is no exception. Some potential limitations could include the\n",
+    "assumption of a linear relationship between the predictor variable and the target variable, the assumption\n",
+    "of homoscedasticity and normality of errors, and the potential for multicollinearity between predictor variables.\n\n")
+
+# Suggestions for improving the model
+cat("Suggestions for improving the model: If there are any obvious ways to improve the model, you could mention\n",
+    "them in the discussion section. For example, you could suggest including additional predictor variables or\n",
+    "using a different type of regression model (e.g., polynomial regression) to better capture non-linear relationships.\n\n")
+
+# Potential applications of the model
+cat("Potential applications of the model: You've already mentioned some potential uses for the model (e.g., estimating\n",
+    "the value of a car or determining if a seller is asking too much), but you could expand on these or provide\n",
+    "additional examples. For example, the model could be used by car dealerships to price their inventory more accurately,\n",
+    "or by insurance companies to determine the value of a car for insurance purposes.\n\n")
+
+# Future directions
+cat("Future directions: If you plan to continue working on this project or have ideas for future research, you could\n",
+    "mention them in the discussion section. For example, you could discuss the possibility of expanding the dataset to\n",
+    "include more recent car models or including more detailed information about each car (e.g., trim level, optional features).\n\n")
+
+# Why other models may be more appropriate
+cat("Why can't we use other models?\n\n")
+cat("While linear regression is a simple and widely-used statistical model, it is not always the best model for every\n",
+    "situation. There are several reasons why other models may be more appropriate for a given dataset or research question.\n\n")
+
+# Reasons for using alternative models
+cat("One reason is that linear regression assumes that the relationship between the predictor variable(s) and the\n",
+    "target variable is linear. If the relationship is not linear, then linear regression may not accurately capture\n",
+    "the relationship and could produce inaccurate predictions. In such cases, other models, such as polynomial regression\n",
+    "or generalized additive models, may be more appropriate.\n\n")
+
+cat("Another reason is that linear regression assumes that the errors in the model are normally distributed and have\n",
+    "constant variance. If these assumptions are violated, the model may not be reliable, and other models, such as\n",
+    "generalized linear models or mixed effects models, may be more appropriate.\n\n")
+
+cat("Finally, some models may be more appropriate for specific types of data or research questions. For example, time\n",
+    "series models may be more appropriate for data that exhibit trends or seasonality, while classification models may\n",
+    "be more appropriate for predicting categorical outcomes.\n\n")
+
+# Summary of alternative regression models
+cat("In summary, while linear regression is a useful model for many situations, it is important to consider the\n",
+    "assumptions of the model and the specific characteristics of the dataset and research question to determine the\n",
+    "most appropriate modeling approach.\n\n")
+
+cat("There are many models that can be used for regression analysis, and the appropriate model will depend on the\n",
+    "specific characteristics of the data and the research question. Here are a few examples of alternative regression\n",
+    "models and some of their limitations:\n\n")
+
+# Alternative regression models and their limitations
+cat("Polynomial Regression: This model is similar to linear regression but includes polynomial terms to allow for\n",
+    "non-linear relationships between the predictor and target variables. However, this model may overfit the data if\n",
+    "the degree of the polynomial is too high, leading to poor generalization to new data.\n\n")
+
+cat("Generalized Linear Models (GLMs): These models extend linear regression to allow for non-normal distributions of\n",
+    "the target variable and non-linear relationships between the predictor and target variables. However, these models\n",
+    "may be computationally intensive and require a larger sample size than linear regression to achieve accurate estimates.\n\n")
+
+cat("Decision Trees: This model partitions the data into smaller subsets based on the predictor variables to create a\n",
+    "tree-like model. However, decision trees can be prone to overfitting, and their performance can be sensitive to\n",
+    "small changes in the data.\n\n")
+
+cat("Random Forests: This model is an extension of decision trees that constructs an ensemble of decision trees and\n",
+    "combines their predictions to make a final prediction. However, this model may be less interpretable than other\n",
+    "models and may not perform well on data with a large number of predictor variables.\n\n")
+
+cat("Support Vector Regression (SVR): This model uses support vector machines to perform regression. SVR is particularly\n",
+    "useful for non-linear problems, but it can be difficult to choose the appropriate kernel function and tuning parameters.\n\n")
+
+cat("Neural Networks: These models are a type of machine learning algorithm that can learn complex non-linear relationships\n",
+    "between the predictor and target variables. However, these models can be difficult to interpret and may require large\n",
+    "amounts of data to avoid overfitting.\n\n")
+
+cat("In summary, there are many alternative regression models that can be used depending on the characteristics of the data and\n",
+"research question. However, each model has its own limitations and trade-offs, and it is important to carefully consider\n",
+"the appropriate model for a given situation.\n\n")
+
+})
+
+} #END BRACKET
+
+```
+
+This is a code written in R for a web application using the Shiny package. The code defines the server logic for the web application. The application reads a CSV file named "CarPrice.csv" and provides interactive data visualizations, a linear regression model, and a discussion section.
+
+The first line defines the server function, which takes two arguments: input and output. The second line reads the "CarPrice.csv" file and stores it in the "cars" data frame. The "metadata" section displays the structure of the "cars" data frame, while the "data" section displays the first 30 rows of the "cars" data frame.
+
+The "scatterPlot" section creates an interactive scatter plot where the x-axis is the user-selected variable, and the y-axis is the target variable ("price"). The plot is created using the plot_ly function from the plotly package. Similarly, the "boxPlot" section creates a box plot of the user-selected variable, while the "histogram" section creates a histogram of the user-selected variable.
+
+The "model_summary" section creates a linear regression model, where the target variable is "price," and the predictor variable is the user-selected variable. The function uses the lm function to fit the linear model and displays the summary of the model. On the other hand, the "accuracy" section calculates the accuracy measures (RMSE, MAE, R-squared) of the linear regression model on the validation partition. The validation partition is created by splitting the "cars" data frame into training and validation sets (70:30 ratio). The accuracy measures are calculated using a custom "accuracy" function.
+
+Finally, the "discussion" section provides a brief discussion of the developed model and its potential applications. Note that the input variables are selected by the user in the web application, and the selected variable is stored in the input object. The server function uses the get function to access the selected variable from the "cars" data frame.
+
+```{r}
+#Run the app
+shinyApp(ui = ui, server = server)
+```
+
+The shinyApp function takes two arguments: ui and server. The ui argument specifies the user interface of the application, which is defined in a separate file. The server argument specifies the server logic of the application, which is defined in the current script.
+
+By calling shinyApp(ui = ui, server = server), the Shiny web application is launched in the default web browser. The user can interact with the application by selecting variables and exploring the visualizations and linear regression model. 
+
