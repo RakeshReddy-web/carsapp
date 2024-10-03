@@ -1,6 +1,6 @@
 ---
 title: "Final Project"
-authors: "Rakesh Reddy Sadu , Bhargav Naidu Bandi , Maanya Thadiparthi"
+authors: "Rakesh Reddy"
 date: "`r Sys.Date()`"
 output: word_document
 ---
